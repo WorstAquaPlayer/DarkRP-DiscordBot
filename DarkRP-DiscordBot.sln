@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32014.148
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DarkRP-DiscordBot", "DarkRP-DiscordBot\DarkRP-DiscordBot.csproj", "{2C573AE9-4895-42D1-A9E2-AB1228F99EDE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2C573AE9-4895-42D1-A9E2-AB1228F99EDE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2C573AE9-4895-42D1-A9E2-AB1228F99EDE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2C573AE9-4895-42D1-A9E2-AB1228F99EDE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2C573AE9-4895-42D1-A9E2-AB1228F99EDE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {910BD03F-E330-41A5-BD11-1DA735051006}
+	EndGlobalSection
+EndGlobal
