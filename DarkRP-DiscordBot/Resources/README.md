@@ -1,5 +1,9 @@
 # Resources
-Following are samples of what the code expects in these files.
+## Icons folder
+Images in .png format that are used for the embed thumbnails (following the model path).
+
+## Files
+Following are samples of what files the code expects and its contents.
 
 ## discord.txt
 ```
