@@ -24,6 +24,50 @@ namespace DarkRP_DiscordBot
         List<Shipment> Shipments;
         List<string> ShipmentCategories = new List<string>();
 
+        static string JobUseString = "Succesful job uses: ";
+        static string shipmentUseString = "Succesful shipment uses: ";
+        static string TotalUseString = "Total succesful uses: ";
+
+        string[] usesArray = new string[3]
+        {
+            $"{JobUseString}0",
+            $"{shipmentUseString}0",
+            $"{TotalUseString}0"
+        };
+
+        int jobUse = 0;
+        int JobUse
+        {
+            get { return jobUse; }
+            set
+            {
+                jobUse = value;
+                usesArray[0] = $"{JobUseString}{jobUse}";
+            }
+        }
+
+        int shipmentUse = 0;
+        int ShipmentUse
+        {
+            get { return shipmentUse; }
+            set
+            {
+                shipmentUse = value;
+                usesArray[1] = $"{shipmentUseString}{shipmentUse}";
+            }
+        }
+
+        int totalUse = 0;
+        int TotalUse
+        {
+            get { return totalUse; }
+            set
+            {
+                totalUse = value;
+                usesArray[2] = $"{TotalUseString}{totalUse}";
+            }
+        }
+
         static void Main(string[] args)
             => new Program().MainAsync().GetAwaiter().GetResult();
 
@@ -113,6 +157,16 @@ namespace DarkRP_DiscordBot
                 Console.WriteLine("Press any key to continue...");
                 Console.ReadKey();
             };
+
+            string[] usesFile = await File.ReadAllLinesAsync("uses.txt");
+            JobUse = int.Parse(GetTrimmedAndLoweredString(usesFile[0].Split(':')[1]));
+            Console.WriteLine(usesArray[0]);
+
+            ShipmentUse = int.Parse(GetTrimmedAndLoweredString(usesFile[1].Split(':')[1]));
+            Console.WriteLine(usesArray[1]);
+
+            TotalUse = int.Parse(GetTrimmedAndLoweredString(usesFile[2].Split(':')[1]));
+            Console.WriteLine(usesArray[2]);
 
             Client = new DiscordSocketClient();
 
@@ -296,22 +350,58 @@ namespace DarkRP_DiscordBot
             }
         }
 
+        async Task SendEmbedMessage(SocketSlashCommand command, string type, string title, string description, Color color, string thumbnail)
+        {
+            int inputOptions = command.Data.Options.First().Options.Count;
+
+            if (inputOptions != 1)
+            {
+                title = "¡Comando ingresado erróneamente!";
+                thumbnail = "";
+            }
+
+            if (inputOptions == 0)
+            {
+                description = $"Por favor, utiliza una opción del comando para seleccionar un {type}.";
+            }
+            else if (inputOptions > 1)
+            {
+                description = $"Por favor, seleccione solo un {type} de una sola categoría.";
+            }
+
+            var embedMessage = new EmbedBuilder()
+                .WithTitle(title)
+                .WithDescription(description)
+                .WithColor(color);
+
+            if (thumbnail != "")
+            {
+                using var thumbnailStream = File.OpenRead(thumbnail);
+
+                embedMessage.WithThumbnailUrl($"attachment://{Path.GetFileName(thumbnail)}");
+                await command.RespondWithFileAsync(thumbnailStream, Path.GetFileName(thumbnail), embed: embedMessage.Build(), ephemeral: true);
+            }
+            else
+            {
+                await command.RespondAsync(embed: embedMessage.Build(), ephemeral: true);
+            }
+
+            if (inputOptions == 1)
+            {
+                TotalUse++;
+
+                await File.WriteAllLinesAsync("uses.txt", usesArray);
+            }
+        }
+
         async Task HandleJobCommand(SocketSlashCommand command)
         {
-            string title = "¡Comando ingresado erróneamente!";
-            string description;
+            string title = "";
+            string description = "";
             Color color = Color.Red;
             string thumbnail = "";
 
-            if (command.Data.Options.First().Options.Count == 0)
-            {
-                description = "Por favor, utiliza una opción del comando para seleccionar un trabajo.";
-            }
-            else if (command.Data.Options.First().Options.Count > 1)
-            {
-                description = "Por favor, seleccione solo un trabajo de una sola categoría.";
-            }
-            else
+            if (command.Data.Options.First().Options.Count == 1)
             {
                 int jobIndex = Convert.ToInt32(command.Data.Options.First().Options.First().Value);
                 var job = Jobs[jobIndex];
@@ -391,42 +481,21 @@ namespace DarkRP_DiscordBot
                 {
                     thumbnail = fullPath;
                 }
+
+                JobUse++;
             }
 
-            var embedJob = new EmbedBuilder()
-                .WithTitle(title)
-                .WithDescription(description)
-                .WithColor(color);
-
-            if (thumbnail != "")
-            {
-                using var thumbnailStream = File.OpenRead(thumbnail);
-
-                embedJob.WithThumbnailUrl($"attachment://{Path.GetFileName(thumbnail)}");
-                await command.RespondWithFileAsync(thumbnailStream, Path.GetFileName(thumbnail), embed: embedJob.Build(), ephemeral: true);
-            }
-            else
-            {
-                await command.RespondAsync(embed: embedJob.Build(), ephemeral: true);
-            }
+            await SendEmbedMessage(command, "trabajo", title, description, color, thumbnail);
         }
 
         async Task HandleShipmentCommand(SocketSlashCommand command)
         {
-            string title = "¡Comando ingresado erróneamente!";
-            string description;
+            string title = "";
+            string description = "";
             Color color = new(140, 0, 0);
             string thumbnail = "";
 
-            if (command.Data.Options.First().Options.Count == 0)
-            {
-                description = "Por favor, utiliza una opción del comando para seleccionar un arma.";
-            }
-            else if (command.Data.Options.First().Options.Count > 1)
-            {
-                description = "Por favor, seleccione solo un arma de una sola categoría.";
-            }
-            else
+            if (command.Data.Options.First().Options.Count == 1)
             {
                 int shipmentIndex = Convert.ToInt32(command.Data.Options.First().Options.First().Value);
                 var shipment = Shipments[shipmentIndex];
@@ -456,24 +525,11 @@ namespace DarkRP_DiscordBot
                 {
                     thumbnail = fullPath;
                 }
+
+                ShipmentUse++;
             }
 
-            var embedShipment = new EmbedBuilder()
-                .WithTitle(title)
-                .WithDescription(description)
-                .WithColor(color);
-
-            if (thumbnail != "")
-            {
-                using var thumbnailStream = File.OpenRead(thumbnail);
-
-                embedShipment.WithThumbnailUrl($"attachment://{Path.GetFileName(thumbnail)}");
-                await command.RespondWithFileAsync(thumbnailStream, Path.GetFileName(thumbnail), embed: embedShipment.Build(), ephemeral: true);
-            }
-            else
-            {
-                await command.RespondAsync(embed: embedShipment.Build(), ephemeral: true);
-            }
+            await SendEmbedMessage(command, "arma", title, description, color, thumbnail);
         }
     }
 }
