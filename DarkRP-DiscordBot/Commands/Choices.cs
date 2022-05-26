@@ -8,7 +8,7 @@ using Discord.WebSocket;
 
 namespace DarkRP_DiscordBot.Commands
 {
-    public class Choices
+    public static class Choices
     {
         static async Task SendEmbedMessage(SocketSlashCommand command, string type, string title, string description, Color color, string thumbnail)
         {
@@ -190,6 +190,51 @@ namespace DarkRP_DiscordBot.Commands
             }
 
             await SendEmbedMessage(command, "arma", title, description, color, thumbnail);
+        }
+
+        public static async Task HandleStatusCommand(SocketSlashCommand command)
+        {
+            var embedMessage = new EmbedBuilder()
+                .WithTitle("Estado del servidor")
+                .WithDescription(Data.StatusText)
+                .WithColor(Color.Red);
+
+            await command.RespondAsync(embed: embedMessage.Build());
+        }
+
+        public static async Task HandleSetStatusCommand(SocketSlashCommand command)
+        {
+            bool canSet = false;
+            var user = command.User as SocketGuildUser;
+
+#if DEBUG
+            var roleIds = Array.ConvertAll(Data.TokenAndIds[3].Split(','), x => ulong.Parse(x));
+#else
+            var roleIds = Array.ConvertAll(Data.TokenAndIds[4].Split(','), x => ulong.Parse(x));
+#endif
+
+            foreach (var role in user.Roles)
+            {
+                if (roleIds.Contains(role.Id))
+                {
+                    canSet = true;
+                }
+            }
+
+            if (canSet)
+            {
+                var value = command.Data.Options.First().Options?.FirstOrDefault().Value.ToString();
+                value = value.Replace("\\n", "\n");
+
+                Data.StatusText = value;
+
+                await File.WriteAllTextAsync("status.txt", Data.StatusText, System.Text.Encoding.Unicode);
+                await command.RespondAsync($"Texto establecido a:\n```\n{Data.StatusText}\n```", ephemeral: true);
+            }
+            else
+            {
+                await command.RespondAsync("No posees el rol necesario para utilizar este comando.", ephemeral: true);
+            }
         }
     }
 }

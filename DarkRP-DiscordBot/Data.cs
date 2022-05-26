@@ -16,6 +16,10 @@ namespace DarkRP_DiscordBot
         public static List<Shipment> Shipments;
         public static List<string> ShipmentCategories = new List<string>();
 
+        public static string StatusText;
+
+        public static string[] TokenAndIds;
+
         static string JobUseString = "Succesful job uses: ";
         static string shipmentUseString = "Succesful shipment uses: ";
         static string TotalUseString = "Total succesful uses: ";

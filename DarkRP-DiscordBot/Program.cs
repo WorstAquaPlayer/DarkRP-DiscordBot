@@ -16,7 +16,6 @@ namespace DarkRP_DiscordBot
     internal class Program
     {
         private DiscordSocketClient Client;
-        string[] tokenAndIds;
 
         static void Main(string[] args)
             => new Program().MainAsync().GetAwaiter().GetResult();
@@ -111,6 +110,11 @@ namespace DarkRP_DiscordBot
                 Console.ReadKey();
             };
 
+            if (!File.Exists("uses.txt"))
+            {
+                await File.WriteAllTextAsync("uses.txt", "", System.Text.Encoding.Unicode);
+            }
+
             string[] usesFile = await File.ReadAllLinesAsync("uses.txt");
             Data.JobUse = int.Parse(GetTrimmedAndLoweredString(usesFile[0].Split(':')[1]));
             Console.WriteLine(Data.UsesArray[0]);
@@ -121,23 +125,30 @@ namespace DarkRP_DiscordBot
             Data.TotalUse = int.Parse(GetTrimmedAndLoweredString(usesFile[2].Split(':')[1]));
             Console.WriteLine(Data.UsesArray[2]);
 
+            if (!File.Exists("status.txt"))
+            {
+                await File.WriteAllTextAsync("status.txt", "", System.Text.Encoding.Unicode);
+            }
+
+            Data.StatusText = await File.ReadAllTextAsync("status.txt", System.Text.Encoding.Unicode);
+
             Client = new DiscordSocketClient();
 
             Client.Log += Log;
             Client.Ready += Client_Ready;
             Client.SlashCommandExecuted += SlashCommandHandler;
 
-            tokenAndIds = Resources.discord.Split('\n');
+            Data.TokenAndIds = Resources.discord.Split('\n');
 
-            for (int i = 0; i < tokenAndIds.Length;i++)
+            for (int i = 0; i < Data.TokenAndIds.Length;i++)
             {
-                tokenAndIds[i] = tokenAndIds[i].Replace("\r", "");
+                Data.TokenAndIds[i] = Data.TokenAndIds[i].Replace("\r", "");
             }
 
 #if DEBUG
-            string token = tokenAndIds[0];
+            string token = Data.TokenAndIds[0];
 #else
-            string token = tokenAndIds[2];
+            string token = Data.TokenAndIds[2];
 #endif
 
             await Client.LoginAsync(TokenType.Bot, token);
@@ -167,17 +178,21 @@ namespace DarkRP_DiscordBot
         {
             SlashCommandOptionBuilder jobOption = MakeJobCommand();
             SlashCommandOptionBuilder shipmentOption = MakeShipmentCommand();
+            SlashCommandOptionBuilder statusOption = MakeStatusCommand();
+            SlashCommandOptionBuilder setStatusOption = MakeSetStatusCommand();
 
             var darkrpCommand = new SlashCommandBuilder()
                 .WithName("darkrp")
                 .WithDescription("Comandos para obtener información del DarkRP.")
                 .AddOption(jobOption)
-                .AddOption(shipmentOption);
+                .AddOption(shipmentOption)
+                .AddOption(statusOption)
+                .AddOption(setStatusOption);
 
             try
             {
 #if DEBUG
-                ulong guildId = ulong.Parse(tokenAndIds[1]);
+                ulong guildId = ulong.Parse(Data.TokenAndIds[1]);
                 await Client.Rest.CreateGuildCommand(darkrpCommand.Build(), guildId);
 #else
                 await Client.CreateGlobalApplicationCommandAsync(darkrpCommand.Build());
@@ -276,6 +291,27 @@ namespace DarkRP_DiscordBot
             return shipmentOption;
         }
 
+        SlashCommandOptionBuilder MakeStatusCommand()
+        {
+            var statusOption = new SlashCommandOptionBuilder()
+                .WithName("status")
+                .WithDescription("Muestra información acerca del estado del servidor.")
+                .WithType(ApplicationCommandOptionType.SubCommand);
+
+            return statusOption;
+        }
+
+        SlashCommandOptionBuilder MakeSetStatusCommand()
+        {
+            var setStatusOption = new SlashCommandOptionBuilder()
+                .WithName("status-set")
+                .WithDescription("Establece el texto a mostrar cuando se usa /darkrp status")
+                .WithType(ApplicationCommandOptionType.SubCommand)
+                .AddOption("texto", ApplicationCommandOptionType.String, "Establece el texto a mostrar cuando se usa /darkrp status", isRequired: true);
+
+            return setStatusOption;
+        }
+
         private async Task SlashCommandHandler(SocketSlashCommand command)
         {
             switch (command.Data.Name)
@@ -284,7 +320,7 @@ namespace DarkRP_DiscordBot
                     await HandleDarkRPCommand(command);
                     break;
                 default:
-                    await command.RespondAsync($"You executed {command.Data.Name}");
+                    Console.WriteLine($"{command.Data.Name} was executed");
                     break;
             }
         }
@@ -299,9 +335,13 @@ namespace DarkRP_DiscordBot
                 case "shipment":
                     await Choices.HandleShipmentCommand(command);
                     break;
+                case "status":
+                    await Choices.HandleStatusCommand(command);
+                    break;
+                case "status-set":
+                    await Choices.HandleSetStatusCommand(command);
+                    break;
             }
         }
-
-        
     }
 }

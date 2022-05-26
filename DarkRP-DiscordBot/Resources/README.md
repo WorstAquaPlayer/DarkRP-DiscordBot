@@ -10,6 +10,8 @@ Following are samples of what files the code expects and its contents.
 Replace this line with the testing bot token (used in Debug)
 Replace this line with the testing guild ID (used in Debug)
 Replace this line with the bot token (used in Release)
+Replace this line with the roles that can use /darkrp status-set separated by commas (used in Debug)
+Replace this line with the roles that can use /darkrp status-set separated by commas (used in Release)
 ```
 
 ## jobs.lua
