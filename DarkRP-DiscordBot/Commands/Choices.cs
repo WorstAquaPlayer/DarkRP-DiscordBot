@@ -195,7 +195,7 @@ namespace DarkRP_DiscordBot.Commands
         public static async Task HandleStatusCommand(SocketSlashCommand command)
         {
             var embedMessage = new EmbedBuilder()
-                .WithTitle("Estado del servidor")
+                .WithTitle("Estado del servidor de DarkRP")
                 .WithDescription(Data.StatusText)
                 .WithColor(Color.Red);
 
