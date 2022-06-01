@@ -9,64 +9,13 @@ using System.IO;
 using System.Linq;
 using System.Globalization;
 using System.Reflection;
+using DarkRP_DiscordBot.Commands;
 
 namespace DarkRP_DiscordBot
 {
     internal class Program
     {
         private DiscordSocketClient Client;
-        string[] tokenAndIds;
-
-        List<Job> Jobs;
-        List<string> JobCategories = new List<string>();
-        Dictionary<string, string> WeaponsDictionary = new Dictionary<string, string>();
-
-        List<Shipment> Shipments;
-        List<string> ShipmentCategories = new List<string>();
-
-        static string JobUseString = "Succesful job uses: ";
-        static string shipmentUseString = "Succesful shipment uses: ";
-        static string TotalUseString = "Total succesful uses: ";
-
-        string[] usesArray = new string[3]
-        {
-            $"{JobUseString}0",
-            $"{shipmentUseString}0",
-            $"{TotalUseString}0"
-        };
-
-        int jobUse = 0;
-        int JobUse
-        {
-            get { return jobUse; }
-            set
-            {
-                jobUse = value;
-                usesArray[0] = $"{JobUseString}{jobUse}";
-            }
-        }
-
-        int shipmentUse = 0;
-        int ShipmentUse
-        {
-            get { return shipmentUse; }
-            set
-            {
-                shipmentUse = value;
-                usesArray[1] = $"{shipmentUseString}{shipmentUse}";
-            }
-        }
-
-        int totalUse = 0;
-        int TotalUse
-        {
-            get { return totalUse; }
-            set
-            {
-                totalUse = value;
-                usesArray[2] = $"{TotalUseString}{totalUse}";
-            }
-        }
 
         static void Main(string[] args)
             => new Program().MainAsync().GetAwaiter().GetResult();
@@ -91,16 +40,16 @@ namespace DarkRP_DiscordBot
 
                 for (int j = 0; j < jobs[i].Weapons.Count; j++)
                 {
-                    if (!WeaponsDictionary.ContainsKey(jobs[i].Weapons[j]))
+                    if (!Data.WeaponsDictionary.ContainsKey(jobs[i].Weapons[j]))
                     {
                         Console.WriteLine($"Missing Weapon in Dictionary!: {jobs[i].Weapons[j]}");
                         missing++;
                     }
                 }
 
-                if (!JobCategories.Contains(jobs[i].Category))
+                if (!Data.JobCategories.Contains(jobs[i].Category))
                 {
-                    JobCategories.Add(jobs[i].Category);
+                    Data.JobCategories.Add(jobs[i].Category);
                 }
             }
 
@@ -122,9 +71,9 @@ namespace DarkRP_DiscordBot
                     missing++;
                 }
 
-                if (!ShipmentCategories.Contains(shipments[i].Category))
+                if (!Data.ShipmentCategories.Contains(shipments[i].Category))
                 {
-                    ShipmentCategories.Add(shipments[i].Category);
+                    Data.ShipmentCategories.Add(shipments[i].Category);
                 }
             }
 
@@ -133,7 +82,7 @@ namespace DarkRP_DiscordBot
 
         public async Task MainAsync()
         {
-            Jobs = Job.GetJobListFromLua(Resources.jobs);
+            Data.Jobs = Job.GetJobListFromLua(Resources.jobs);
 
             var weapons_dict_text = Resources.weapons_dict.Split('\n');
             for (int i = 0; i < weapons_dict_text.Length; i++)
@@ -141,32 +90,47 @@ namespace DarkRP_DiscordBot
                 weapons_dict_text[i] = weapons_dict_text[i].Replace("\r", "");
 
                 var keyValue = weapons_dict_text[i].Split(" = ");
-                WeaponsDictionary.Add(keyValue[0], keyValue[1]);
+                Data.WeaponsDictionary.Add(keyValue[0], keyValue[1]);
             }
 
-            if (CheckJobResources(Jobs) > 0)
+            // order alphabetically
+            Data.Jobs = Data.Jobs.OrderBy(x => x.Name).ToList();
+
+            if (CheckJobResources(Data.Jobs) > 0)
             {
                 Console.WriteLine("Press any key to continue...");
                 Console.ReadKey();
             };
 
-            Shipments = Shipment.GetShipmentListFromLua(Resources.shipments);
+            Data.Shipments = Shipment.GetShipmentListFromLua(Resources.shipments);
 
-            if (CheckShipmentResources(Shipments) > 0)
+            if (CheckShipmentResources(Data.Shipments) > 0)
             {
                 Console.WriteLine("Press any key to continue...");
                 Console.ReadKey();
             };
+
+            if (!File.Exists("uses.txt"))
+            {
+                await File.WriteAllTextAsync("uses.txt", "", System.Text.Encoding.Unicode);
+            }
 
             string[] usesFile = await File.ReadAllLinesAsync("uses.txt");
-            JobUse = int.Parse(GetTrimmedAndLoweredString(usesFile[0].Split(':')[1]));
-            Console.WriteLine(usesArray[0]);
+            Data.JobUse = int.Parse(GetTrimmedAndLoweredString(usesFile[0].Split(':')[1]));
+            Console.WriteLine(Data.UsesArray[0]);
 
-            ShipmentUse = int.Parse(GetTrimmedAndLoweredString(usesFile[1].Split(':')[1]));
-            Console.WriteLine(usesArray[1]);
+            Data.ShipmentUse = int.Parse(GetTrimmedAndLoweredString(usesFile[1].Split(':')[1]));
+            Console.WriteLine(Data.UsesArray[1]);
 
-            TotalUse = int.Parse(GetTrimmedAndLoweredString(usesFile[2].Split(':')[1]));
-            Console.WriteLine(usesArray[2]);
+            Data.TotalUse = int.Parse(GetTrimmedAndLoweredString(usesFile[2].Split(':')[1]));
+            Console.WriteLine(Data.UsesArray[2]);
+
+            if (!File.Exists("status.txt"))
+            {
+                await File.WriteAllTextAsync("status.txt", "", System.Text.Encoding.Unicode);
+            }
+
+            Data.StatusText = await File.ReadAllTextAsync("status.txt", System.Text.Encoding.Unicode);
 
             Client = new DiscordSocketClient();
 
@@ -174,17 +138,17 @@ namespace DarkRP_DiscordBot
             Client.Ready += Client_Ready;
             Client.SlashCommandExecuted += SlashCommandHandler;
 
-            tokenAndIds = Resources.discord.Split('\n');
+            Data.TokenAndIds = Resources.discord.Split('\n');
 
-            for (int i = 0; i < tokenAndIds.Length;i++)
+            for (int i = 0; i < Data.TokenAndIds.Length;i++)
             {
-                tokenAndIds[i] = tokenAndIds[i].Replace("\r", "");
+                Data.TokenAndIds[i] = Data.TokenAndIds[i].Replace("\r", "");
             }
 
 #if DEBUG
-            string token = tokenAndIds[0];
+            string token = Data.TokenAndIds[0];
 #else
-            string token = tokenAndIds[2];
+            string token = Data.TokenAndIds[2];
 #endif
 
             await Client.LoginAsync(TokenType.Bot, token);
@@ -214,17 +178,21 @@ namespace DarkRP_DiscordBot
         {
             SlashCommandOptionBuilder jobOption = MakeJobCommand();
             SlashCommandOptionBuilder shipmentOption = MakeShipmentCommand();
+            SlashCommandOptionBuilder statusOption = MakeStatusCommand();
+            SlashCommandOptionBuilder setStatusOption = MakeSetStatusCommand();
 
             var darkrpCommand = new SlashCommandBuilder()
                 .WithName("darkrp")
                 .WithDescription("Comandos para obtener información del DarkRP.")
                 .AddOption(jobOption)
-                .AddOption(shipmentOption);
+                .AddOption(shipmentOption)
+                .AddOption(statusOption)
+                .AddOption(setStatusOption);
 
             try
             {
 #if DEBUG
-                ulong guildId = ulong.Parse(tokenAndIds[1]);
+                ulong guildId = ulong.Parse(Data.TokenAndIds[1]);
                 await Client.Rest.CreateGuildCommand(darkrpCommand.Build(), guildId);
 #else
                 await Client.CreateGlobalApplicationCommandAsync(darkrpCommand.Build());
@@ -239,29 +207,28 @@ namespace DarkRP_DiscordBot
         SlashCommandOptionBuilder MakeJobCommand()
         {
             var categories = new List<SlashCommandOptionBuilder>();
-            Jobs = Jobs.OrderBy(x => x.Name).ToList();
 
-            for (int i = 0; i < JobCategories.Count; i++)
+            for (int i = 0; i < Data.JobCategories.Count; i++)
             {
-                var categoryString = GetTrimmedAndLoweredString(JobCategories[i]);
+                var categoryString = GetTrimmedAndLoweredString(Data.JobCategories[i]);
 
                 var category = new SlashCommandOptionBuilder()
                     .WithName(categoryString)
-                    .WithDescription($"Categoría \"{JobCategories[i]}\"")
+                    .WithDescription($"Categoría \"{Data.JobCategories[i]}\"")
                     .WithRequired(false)
                     .WithType(ApplicationCommandOptionType.Integer);
 
                 categories.Add(category);
             }
 
-            for (int i = 0; i < Jobs.Count; i++)
+            for (int i = 0; i < Data.Jobs.Count; i++)
             {
-                var categoryString = GetTrimmedAndLoweredString(Jobs[i].Category);
+                var categoryString = GetTrimmedAndLoweredString(Data.Jobs[i].Category);
 
                 var matches = categories.Where(p => string.Equals(p.Name, categoryString, StringComparison.CurrentCulture));
                 var category = matches.First();
 
-                category.AddChoice(Jobs[i].Name, i);
+                category.AddChoice(Data.Jobs[i].Name, i);
 
                 int index = categories.FindIndex(p => p.Name == categoryString);
                 categories[index] = category;
@@ -283,29 +250,29 @@ namespace DarkRP_DiscordBot
         SlashCommandOptionBuilder MakeShipmentCommand()
         {
             var categories = new List<SlashCommandOptionBuilder>();
-            Shipments = Shipments.OrderBy(x => x.SortOrder).ToList();
+            Data.Shipments = Data.Shipments.OrderBy(x => x.SortOrder).ToList();
 
-            for (int i = 0; i < ShipmentCategories.Count; i++)
+            for (int i = 0; i < Data.ShipmentCategories.Count; i++)
             {
-                var categoryString = GetTrimmedAndLoweredString(ShipmentCategories[i]);
+                var categoryString = GetTrimmedAndLoweredString(Data.ShipmentCategories[i]);
 
                 var category = new SlashCommandOptionBuilder()
                     .WithName(categoryString)
-                    .WithDescription($"Categoría \"{ShipmentCategories[i]}\"")
+                    .WithDescription($"Categoría \"{Data.ShipmentCategories[i]}\"")
                     .WithRequired(false)
                     .WithType(ApplicationCommandOptionType.Integer);
 
                 categories.Add(category);
             }
 
-            for (int i = 0; i < Shipments.Count; i++)
+            for (int i = 0; i < Data.Shipments.Count; i++)
             {
-                var categoryString = GetTrimmedAndLoweredString(Shipments[i].Category);
+                var categoryString = GetTrimmedAndLoweredString(Data.Shipments[i].Category);
 
                 var matches = categories.Where(p => string.Equals(p.Name, categoryString, StringComparison.CurrentCulture));
                 var category = matches.First();
 
-                category.AddChoice(Shipments[i].Name, i);
+                category.AddChoice(Data.Shipments[i].Name, i);
 
                 int index = categories.FindIndex(p => p.Name == categoryString);
                 categories[index] = category;
@@ -324,6 +291,27 @@ namespace DarkRP_DiscordBot
             return shipmentOption;
         }
 
+        SlashCommandOptionBuilder MakeStatusCommand()
+        {
+            var statusOption = new SlashCommandOptionBuilder()
+                .WithName("status")
+                .WithDescription("Muestra información acerca del estado del servidor.")
+                .WithType(ApplicationCommandOptionType.SubCommand);
+
+            return statusOption;
+        }
+
+        SlashCommandOptionBuilder MakeSetStatusCommand()
+        {
+            var setStatusOption = new SlashCommandOptionBuilder()
+                .WithName("status-set")
+                .WithDescription("Establece el texto a mostrar cuando se usa /darkrp status")
+                .WithType(ApplicationCommandOptionType.SubCommand)
+                .AddOption("texto", ApplicationCommandOptionType.String, "Establece el texto a mostrar cuando se usa /darkrp status", isRequired: true);
+
+            return setStatusOption;
+        }
+
         private async Task SlashCommandHandler(SocketSlashCommand command)
         {
             switch (command.Data.Name)
@@ -332,7 +320,7 @@ namespace DarkRP_DiscordBot
                     await HandleDarkRPCommand(command);
                     break;
                 default:
-                    await command.RespondAsync($"You executed {command.Data.Name}");
+                    Console.WriteLine($"{command.Data.Name} was executed");
                     break;
             }
         }
@@ -342,194 +330,18 @@ namespace DarkRP_DiscordBot
             switch (command.Data.Options.First().Name)
             {
                 case "job":
-                    await HandleJobCommand(command);
+                    await Choices.HandleJobCommand(command);
                     break;
                 case "shipment":
-                    await HandleShipmentCommand(command);
+                    await Choices.HandleShipmentCommand(command);
+                    break;
+                case "status":
+                    await Choices.HandleStatusCommand(command);
+                    break;
+                case "status-set":
+                    await Choices.HandleSetStatusCommand(command);
                     break;
             }
-        }
-
-        async Task SendEmbedMessage(SocketSlashCommand command, string type, string title, string description, Color color, string thumbnail)
-        {
-            int inputOptions = command.Data.Options.First().Options.Count;
-
-            if (inputOptions != 1)
-            {
-                title = "¡Comando ingresado erróneamente!";
-                thumbnail = "";
-            }
-
-            if (inputOptions == 0)
-            {
-                description = $"Por favor, utiliza una opción del comando para seleccionar un {type}.";
-            }
-            else if (inputOptions > 1)
-            {
-                description = $"Por favor, seleccione solo un {type} de una sola categoría.";
-            }
-
-            var embedMessage = new EmbedBuilder()
-                .WithTitle(title)
-                .WithDescription(description)
-                .WithColor(color);
-
-            if (thumbnail != "")
-            {
-                using var thumbnailStream = File.OpenRead(thumbnail);
-
-                embedMessage.WithThumbnailUrl($"attachment://{Path.GetFileName(thumbnail)}");
-                await command.RespondWithFileAsync(thumbnailStream, Path.GetFileName(thumbnail), embed: embedMessage.Build(), ephemeral: true);
-            }
-            else
-            {
-                await command.RespondAsync(embed: embedMessage.Build(), ephemeral: true);
-            }
-
-            if (inputOptions == 1)
-            {
-                TotalUse++;
-
-                await File.WriteAllLinesAsync("uses.txt", usesArray);
-            }
-        }
-
-        async Task HandleJobCommand(SocketSlashCommand command)
-        {
-            string title = "";
-            string description = "";
-            Color color = Color.Red;
-            string thumbnail = "";
-
-            if (command.Data.Options.First().Options.Count == 1)
-            {
-                int jobIndex = Convert.ToInt32(command.Data.Options.First().Options.First().Value);
-                var job = Jobs[jobIndex];
-
-                title = job.Name;
-
-                string[] weapons = new string[job.Weapons.Count];
-                for (int i = 0; i < weapons.Length; i++)
-                {
-                    if (WeaponsDictionary.ContainsKey(job.Weapons[i]))
-                    {
-                        weapons[i] = WeaponsDictionary[job.Weapons[i]];
-                    }
-                    else
-                    {
-                        weapons[i] = job.Weapons[i];
-                    }
-                }
-
-                string customCheck = "";
-
-                if (job.CustomCheck == null)
-                {
-                    customCheck = "Ninguno";
-                }
-                else if (job.CustomCheck.Contains("vip-empresarial"))
-                {
-                    customCheck = "VIP Empresarial";
-                }
-                else if (job.CustomCheck.Contains("vip-jefe"))
-                {
-                    customCheck = "VIP Jefe";
-                }
-                else if (job.CustomCheck.Contains("vip-presidencial"))
-                {
-                    customCheck = "VIP Presidencial";
-                }
-                else if (job.CustomCheck.Contains("vip-presidencialplus"))
-                {
-                    customCheck = "VIP Presidencial Plus+";
-                }
-                else if (job.CustomCheck.Contains("ayudante"))
-                {
-                    customCheck = "Ninguno (Staff)";
-                }
-                else if (job.CustomCheck.Contains("mod"))
-                {
-                    customCheck = "Ninguno (Staff)";
-                }
-
-                string[] descriptionArray = new string[]
-                {
-                    "**Descripción**",
-                    job.Description.Trim(),
-                    "\n**Armas**",
-                    string.Join(", ", weapons.OrderBy(x => x)),
-                    "\n**Slots**",
-                    job.Max > 0 ? job.Max.ToString() : "Ilimitado",
-                    "\n**Salario**",
-                    job.Salary > 0 ? $"${job.Salary.ToString("n", new CultureInfo("en-US")).Replace(".000", "")}" : "Ninguno",
-                    "\n**VIP requerido**",
-                    customCheck,
-                    "\n**Costo**",
-                    job.UnlockCost > 0 ? $"${job.UnlockCost.ToString("n", new CultureInfo("en-US")).Replace(".000", "")}" : "Ninguno",
-                    "\n**Nivel requerido**",
-                    job.Level > 0 ? job.Level.ToString() : "1"
-                };
-
-                description = string.Join('\n', descriptionArray);
-                color = (Color)job.Color;
-
-                var random = new Random().Next(job.Model.Count);
-                var thumbnailPath = job.Model[random].Replace(".mdl", ".png");
-                var fullPath = Path.Combine("Resources", "Icons", thumbnailPath);
-
-                if (File.Exists(fullPath))
-                {
-                    thumbnail = fullPath;
-                }
-
-                JobUse++;
-            }
-
-            await SendEmbedMessage(command, "trabajo", title, description, color, thumbnail);
-        }
-
-        async Task HandleShipmentCommand(SocketSlashCommand command)
-        {
-            string title = "";
-            string description = "";
-            Color color = new(140, 0, 0);
-            string thumbnail = "";
-
-            if (command.Data.Options.First().Options.Count == 1)
-            {
-                int shipmentIndex = Convert.ToInt32(command.Data.Options.First().Options.First().Value);
-                var shipment = Shipments[shipmentIndex];
-
-                title = shipment.Name;
-
-                int maxIndividualPrice = (int)((shipment.Price / shipment.Amount) * 1.5);
-
-                string[] descriptionArray = new string[]
-                {
-                    "**Precio de caja (spawn)**",
-                    $"${shipment.Price.ToString("n", new CultureInfo("en-US")).Replace(".000", "")}",
-                    "\n**Cantidad**",
-                    shipment.Amount.ToString(),
-                    "\n**Precio individual máximo**",
-                    $"${maxIndividualPrice.ToString("n", new CultureInfo("en-US")).Replace(".000", "")}",
-                    "\n**Precio de caja máximo (venta)**",
-                    $"${(maxIndividualPrice * shipment.Amount).ToString("n", new CultureInfo("en-US")).Replace(".000", "")}"
-                };
-
-                description = string.Join('\n', descriptionArray);
-
-                var thumbnailPath = shipment.Model.Replace(".mdl", ".png");
-                var fullPath = Path.Combine("Resources", "Icons", thumbnailPath);
-
-                if (File.Exists(fullPath))
-                {
-                    thumbnail = fullPath;
-                }
-
-                ShipmentUse++;
-            }
-
-            await SendEmbedMessage(command, "arma", title, description, color, thumbnail);
         }
     }
 }
