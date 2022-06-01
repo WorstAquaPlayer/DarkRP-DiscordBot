@@ -227,8 +227,13 @@ namespace DarkRP_DiscordBot.Commands
                 value = value.Replace("\\n", "\n");
 
                 Data.StatusText = value;
+#if DEBUG
+                var statusFileName = "status_debug.txt";
+#else
+                var statusFileName = "status.txt";
+#endif
 
-                await File.WriteAllTextAsync("status.txt", Data.StatusText, System.Text.Encoding.Unicode);
+                await File.WriteAllTextAsync(statusFileName, Data.StatusText, System.Text.Encoding.Unicode);
                 await command.RespondAsync($"Texto establecido a:\n```\n{Data.StatusText}\n```", ephemeral: true);
             }
             else

@@ -125,9 +125,15 @@ namespace DarkRP_DiscordBot
             Data.TotalUse = int.Parse(GetTrimmedAndLoweredString(usesFile[2].Split(':')[1]));
             Console.WriteLine(Data.UsesArray[2]);
 
-            if (!File.Exists("status.txt"))
+#if DEBUG
+            var statusFileName = "status_debug.txt";
+#else
+            var statusFileName = "status.txt";
+#endif
+
+            if (!File.Exists(statusFileName))
             {
-                await File.WriteAllTextAsync("status.txt", "", System.Text.Encoding.Unicode);
+                await File.WriteAllTextAsync(statusFileName, "", System.Text.Encoding.Unicode);
             }
 
             Data.StatusText = await File.ReadAllTextAsync("status.txt", System.Text.Encoding.Unicode);
